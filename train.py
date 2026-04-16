@@ -36,66 +36,44 @@ warnings.filterwarnings("ignore")
 np.random.seed(42)
 
 # ═══════════════════════════════════════════════════════════════
-# PATHS  – edit these before running
-# ═══════════════════════════════════════════════════════════════
-PROCESSED_EEG_ROOT = "/kaggle/input/datasets/ruchiabey/emognitioncleaned-combined"
-RAW_WATCH_ROOT     = "/kaggle/input/datasets/ruchiabey/emognitioncleaned-combined"
-RAW_MUSE_ROOT      = "/kaggle/input/datasets/ruchiabey/emognition"
+# PATHS
+MUSE_ROOT  = "/kaggle/input/datasets/ruchiabey/emognitioncleaned-combined"
+WATCH_ROOT = "/kaggle/input/datasets/ruchiabey/emognitioncleaned-combined"
 
-MODEL_OUT_DIR      = "/kaggle/working/model_artifacts"
+MODEL_OUT_DIR = "/kaggle/working/model_artifacts"
 os.makedirs(MODEL_OUT_DIR, exist_ok=True)
 
-# ═══════════════════════════════════════════════════════════════
 # LOAD TRAINING TRIALS
-# ═══════════════════════════════════════════════════════════════
 print("\nLoading training trials from Emognition ...")
 t0 = time.time()
 
 train_trials = []
 skipped = defaultdict(int)
 
-for subj in sorted(os.listdir(PROCESSED_EEG_ROOT)):
-    subj_dir = os.path.join(PROCESSED_EEG_ROOT, subj)
+for subj in sorted(os.listdir(MUSE_ROOT)):
+    subj_dir = os.path.join(MUSE_ROOT, subj)
     if not os.path.isdir(subj_dir) or not subj.isdigit():
         continue
+    sid = subj
 
-    for trial_name in sorted(os.listdir(subj_dir)):
-        trial_path = os.path.join(subj_dir, trial_name)
-        if not os.path.isdir(trial_path):
-            continue
+    for emotion, label_idx in EMOTION_LABELS.items():
+        muse_clean = os.path.join(subj_dir, f"{sid}_{emotion}_STIMULUS_MUSE_cleaned.json")
+        muse_raw   = os.path.join(subj_dir, f"{sid}_{emotion}_STIMULUS_MUSE.json")
+        muse_json  = muse_clean if os.path.isfile(muse_clean) else muse_raw
 
-        emotion = parse_emotion_from_training_trial_name(trial_name)
-        if emotion is None:
-            skipped["bad_trial_name"] += 1
-            continue
-
-        label_idx = EMOTION_LABELS[emotion]
-        sid = subj
-
-        eeg_json = os.path.join(trial_path, trial_name + ".json")
-        if not os.path.isfile(eeg_json):
-            skipped["missing_eeg_json"] += 1
-            continue
-
-        try:
-            with open(eeg_json) as f:
-                ed = json.load(f)
-            eeg = np.stack([np.array(ed[ch], dtype=np.float32) for ch in EEG_CHANNELS])
-            eeg = safe_array(eeg)
-        except Exception:
-            skipped["bad_eeg_json"] += 1
-            continue
-
-        T_eeg = eeg.shape[1]
-
-        muse_json = os.path.join(RAW_MUSE_ROOT, sid, f"{sid}_{emotion}_STIMULUS_MUSE.json")
         if not os.path.isfile(muse_json):
             skipped["missing_muse_json"] += 1
+            continue
+
+        sw_json = os.path.join(WATCH_ROOT, sid, f"{sid}_{emotion}_STIMULUS_SAMSUNG_WATCH.json")
+        if not os.path.isfile(sw_json):
+            skipped["missing_watch_json"] += 1
             continue
 
         try:
             with open(muse_json) as f:
                 md = json.load(f)
+            eeg = np.stack([safe_array(np.array(md[ch], dtype=np.float32)) for ch in EEG_CHANNELS])
             band_list = []
             for bch in BAND_CHANNELS:
                 raw_band  = safe_array(np.array(md[bch], dtype=np.float32))
@@ -105,11 +83,6 @@ for subj in sorted(os.listdir(PROCESSED_EEG_ROOT)):
             band_arr = np.stack([x[:min_band] for x in band_list], axis=0)
         except Exception:
             skipped["bad_muse_json"] += 1
-            continue
-
-        sw_json = os.path.join(RAW_WATCH_ROOT, sid, f"{sid}_{emotion}_STIMULUS_SAMSUNG_WATCH.json")
-        if not os.path.isfile(sw_json):
-            skipped["missing_watch_json"] += 1
             continue
 
         try:
@@ -123,7 +96,7 @@ for subj in sorted(os.listdir(PROCESSED_EEG_ROOT)):
             skipped["bad_watch_json"] += 1
             continue
 
-        dur      = min(T_eeg / EEG_SR, band_arr.shape[1] / BAND_SR, len(bvp_vals) / TRAIN_BVP_SR)
+        dur      = min(eeg.shape[1] / EEG_SR, band_arr.shape[1] / BAND_SR, len(bvp_vals) / TRAIN_BVP_SR)
         eeg      = eeg[:,      :int(dur * EEG_SR)]
         band_arr = band_arr[:, :int(dur * BAND_SR)]
         bvp_vals = bvp_vals[   :int(dur * TRAIN_BVP_SR)]
@@ -138,7 +111,9 @@ print(f"Training trials loaded: {len(train_trials)}  ({time.time()-t0:.1f}s)")
 if skipped:
     print("Skipped:", dict(skipped))
 
-# ═══════════════════════════════════════════════════════════════
+if len(train_trials) == 0:
+    raise RuntimeError("No training trials loaded. Check paths and emotion names.")
+
 # WINDOW ALL TRIALS
 # ═══════════════════════════════════════════════════════════════
 print("\nWindowing training trials ...")
