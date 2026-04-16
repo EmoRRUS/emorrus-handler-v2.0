@@ -1,0 +1,18 @@
+# Model artifacts (too large for git – bake into Docker at build time)
+model_artifacts/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.env
+venv/
+.venv/
+
+# Patch/temp scripts
+patch_handler.py
+
+# OS
+.DS_Store
+Thumbs.db
