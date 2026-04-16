@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source files
 COPY preprocess.py .
 COPY handler.py .
+COPY model_artifacts/ ./model_artifacts/
 
 # Model artifacts are expected at /app/model_artifacts/lda_model.pkl
 # Either COPY them in at build time:
