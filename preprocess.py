@@ -449,3 +449,37 @@ def window_trial_to_features(eeg_raw, band_true, bvp, bvp_sr):
 
     X = np.vstack(feats_list) if feats_list else np.empty((0, N_FEATURES_RAW), dtype=np.float32)
     return X, meta_list
+
+
+# ================================================================
+# BAND POWER FROM RAW EEG (used by train.py, handler.py, client.py)
+# ================================================================
+_BAND_DEF_ORDER = [
+    ("Alpha", (8,  13)),
+    ("Beta",  (13, 30)),
+    ("Delta", (1,   4)),
+    ("Gamma", (30, 100)),
+    ("Theta", (4,   8)),
+]
+_RMS_WIN = 256  # 1-second sliding window @ 256 Hz
+
+
+def _bp_filter(sig, lo, hi, sr=EEG_SR, order=4):
+    nyq = 0.5 * sr
+    lon = max(lo / nyq, 1e-5)
+    hin = min(hi / nyq, 0.999)
+    if lon >= hin:
+        return np.zeros_like(sig)
+    b, a = butter(order, [lon, hin], btype="band")
+    return filtfilt(b, a, sig.astype(np.float64)).astype(np.float32)
+
+
+def compute_band_arr(eeg_4ch, sr=EEG_SR):
+    rows = []
+    kernel = np.ones(_RMS_WIN, dtype=np.float32) / _RMS_WIN
+    for _, (lo, hi) in _BAND_DEF_ORDER:
+        for ci in range(4):
+            filt  = _bp_filter(eeg_4ch[ci], lo, hi, sr)
+            power = np.convolve(filt ** 2, kernel, mode="same")
+            rows.append(np.sqrt(np.maximum(power, 0)).astype(np.float32))
+    return np.stack(rows, axis=0)  # (20, N) matching BAND_CHANNELS order
