@@ -1,5 +1,4 @@
-# Model artifacts (too large for git – bake into Docker at build time)
-model_artifacts/
+
 
 # Python
 __pycache__/
