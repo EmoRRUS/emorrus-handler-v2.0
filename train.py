@@ -20,7 +20,6 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.metrics import classification_report
 
 from preprocess import (
-    PROCESSED_EEG_ROOT_DEFAULT,  # not defined – we set paths below
     EEG_CHANNELS, BAND_CHANNELS,
     EMOTION_LABELS, IDX_TO_LABEL, NUM_CLASSES,
     EEG_SR, BAND_SR, TRAIN_BAND_STORED_SR, TRAIN_BVP_SR,
