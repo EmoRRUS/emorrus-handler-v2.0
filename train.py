@@ -39,9 +39,9 @@ np.random.seed(42)
 # ═══════════════════════════════════════════════════════════════
 # PATHS  – edit these before running
 # ═══════════════════════════════════════════════════════════════
-PROCESSED_EEG_ROOT = "/kaggle/input/datasets/sasinduabewickrema/emognition-processed/Emognition Processed"
-RAW_WATCH_ROOT     = "/kaggle/input/emognition"
-RAW_MUSE_ROOT      = "/kaggle/input/emognition"
+PROCESSED_EEG_ROOT = "/kaggle/input/datasets/ruchiabey/emognitioncleaned-combined"
+RAW_WATCH_ROOT     = "/kaggle/input/datasets/ruchiabey/emognitioncleaned-combined"
+RAW_MUSE_ROOT      = "/kaggle/input/datasets/ruchiabey/emognition"
 
 MODEL_OUT_DIR      = "/kaggle/working/model_artifacts"
 os.makedirs(MODEL_OUT_DIR, exist_ok=True)
